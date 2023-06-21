@@ -13,6 +13,7 @@
 #include <ATen/ops/atan2_native.h>
 #include <ATen/ops/div_native.h>
 #include <ATen/ops/eq_native.h>
+#include <ATen/ops/floor_divide_native.h>
 #include <ATen/ops/fmod_native.h>
 #include <ATen/ops/ge_native.h>
 #include <ATen/ops/gt_native.h>
@@ -21,6 +22,9 @@
 #include <ATen/ops/lerp_native.h>
 #include <ATen/ops/logaddexp2_native.h>
 #include <ATen/ops/logaddexp_native.h>
+#include <ATen/ops/logical_and_native.h>
+#include <ATen/ops/logical_or_native.h>
+#include <ATen/ops/logical_xor_native.h>
 #include <ATen/ops/lt_native.h>
 #include <ATen/ops/maximum_native.h>
 #include <ATen/ops/minimum_native.h>
@@ -48,7 +52,7 @@ typedef MPSGraphTensor* (^BinaryOpBlock)(BinaryOpCachedGraph*, MPSGraphTensor*, 
   MPSGraphTensor*(mps::BinaryOpCachedGraph * graph, MPSGraphTensor * primary, MPSGraphTensor * secondary)
 
 // alpha is always 1.0 except when this function is called from add_sub_lerp_template()
-void binaryOpTensor(const Tensor& self,
+static void binaryOpTensor(const Tensor& self,
                     const Tensor& other,
                     const Scalar& alpha,
                     const Tensor& output_,
@@ -191,20 +195,20 @@ void binaryOpTensor(const Tensor& self,
   }
 }
 
-void binaryOpScalar(const Tensor& self,
-                    const Scalar& other,
-                    const Scalar& alpha,
-                    const Tensor& output,
-                    std::string op_name,
-                    BinaryOpBlock binaryBlock) {
+static void binaryOpScalar(const Tensor& self,
+                           const Scalar& other,
+                           const Scalar& alpha,
+                           const Tensor& output,
+                           std::string op_name,
+                           BinaryOpBlock binaryBlock) {
   binaryOpTensor(self, wrapped_scalar_tensor(other), alpha, output, op_name, binaryBlock);
 }
 
-void div_mode_template(const Tensor& self,
-                       const Tensor& other,
-                       c10::optional<c10::string_view> rounding_mode,
-                       const Tensor& output,
-                       const string op_name) {
+static void div_mode_template(const Tensor& self,
+                              const Tensor& other,
+                              c10::optional<c10::string_view> rounding_mode,
+                              const Tensor& output,
+                              const string op_name) {
   if (rounding_mode.has_value() && *rounding_mode == "trunc") {
     TORCH_CHECK(self.scalar_type() != ScalarType::Half, "MPS: does not support trunc_divide op with float16 input");
   }
@@ -256,7 +260,7 @@ void div_mode_template(const Tensor& self,
                  div_mode_op_block);
 }
 
-void add_sub_lerp_template(const Tensor& self,
+static void add_sub_lerp_template(const Tensor& self,
                            const Tensor& other,
                            const Scalar& alpha,
                            const Tensor& output,
