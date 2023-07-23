@@ -148,6 +148,7 @@ except ImportError as e:
 
 # Experimental functionality
 from quantization.core.experimental.test_bits import TestBits  # noqa: F401
+from quantization.core.experimental.test_float8 import TestFloat8Dtype  # noqa: F401
 
 if __name__ == '__main__':
     run_tests()

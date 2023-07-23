@@ -96,9 +96,10 @@ class TestFloat8Dtype(TestCase):
     """
 
     @parametrize("dtype", [torch.float8_e5m2, torch.float8_e4m3fn])
-    def test_creation_with_zeros(self, dtype):
-        x = torch.zeros(8, dtype=torch.float)
-        x8 = torch.zeros(8, dtype=dtype)
+    @parametrize("device", ["cpu", "cuda"])
+    def test_creation_with_zeros(self, dtype, device):
+        x = torch.zeros(8, dtype=torch.float, device=device)
+        x8 = torch.zeros(8, dtype=dtype, device=device)
         self.assertEqual(x, x8.float())
 
     """
@@ -106,8 +107,9 @@ class TestFloat8Dtype(TestCase):
     """
 
     @parametrize("dtype", [torch.float8_e5m2, torch.float8_e4m3fn])
-    def test_cast_to_float8(self, dtype):
-        x = torch.rand((100, 100)) * FP8_MAX[dtype]
+    @parametrize("device", ["cpu", "cuda"])
+    def test_cast_to_float8(self, dtype, device):
+        x = torch.rand((100, 100), device=device) * FP8_MAX[dtype]
         x = torch.cat((x, -x))
         x8 = x.to(dtype)
         x8_simulated = simulateFp8Precision(x, dtype)
@@ -135,20 +137,21 @@ class TestFloat8Dtype(TestCase):
     """
 
     @parametrize("dtype", [torch.float8_e5m2, torch.float8_e4m3fn])
-    def test_special_numbers(self, dtype):
-        def compare_binary_with_decimal(binary, decimal, number_name, dtype):
+    @parametrize("device", ["cpu", "cuda"])
+    def test_special_numbers(self, dtype, device):
+        def compare_binary_with_decimal(binary, decimal, number_name, dtype, device):
             bits_int = int(binary, 2)
-            tensor_int = torch.tensor([bits_int], dtype=torch.uint8)
+            tensor_int = torch.tensor([bits_int], dtype=torch.uint8, device=device)
             tensor_fp8 = tensor_int.view(dtype)
             if number_name == "nan":
                 assert tensor_fp8.isnan()
             else:
                 tensor_fp32 = tensor_fp8.float()
-                ref_tensor_fp32 = torch.tensor([decimal], dtype=torch.float)
+                ref_tensor_fp32 = torch.tensor([decimal], dtype=torch.float, device=device)
                 self.assertEqual(tensor_fp32, ref_tensor_fp32)
 
         for number in SPECIAL_NUMBERS[dtype]:
-            compare_binary_with_decimal(*number, dtype)
+            compare_binary_with_decimal(*number, dtype, device)
 
 
 instantiate_parametrized_tests(TestFloat8Dtype)
